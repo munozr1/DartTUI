@@ -3,13 +3,17 @@ import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'package:path/path.dart' as path;
 import 'dart:math';
+
 typedef winsize_c = ffi.Pointer<ffi.Uint16> Function();
 typedef winsize_d = ffi.Pointer<ffi.Uint16> Function();
 typedef free_c = ffi.Void Function(ffi.Pointer);
 typedef free_d = void Function(ffi.Pointer);
+typedef set_console_mode_c = ffi.Int32 Function(ffi.Int32);
+typedef set_console_mode_d = int Function(int);
+typedef get_console_mode_c = ffi.Int32 Function();
+typedef get_console_mode_d = int Function();
 
-
-String diamond = "◇";
+String diamond      = "◇";
 String pipe         = "│";
 String hook         = "└";
 String circle       = "○";
@@ -24,6 +28,9 @@ class IMenu {
   int rows = 0;
   int cols = 0;
 
+  late ffi.DynamicLibrary _dylib;
+  late set_console_mode_d _setConsoleMode;
+  late get_console_mode_d _getConsoleMode;
 
   // constructor to initialize terminal size
   IMenu() {
@@ -62,8 +69,8 @@ class IMenu {
     }
 
     // debug
-    print('Attempting to load library from: $libraryPath');
-    print('Current working directory: $currentDir');
+    // print('Attempting to load library from: $libraryPath');
+    // print('Current working directory: $currentDir');
 
     try {
       // check if library exists
@@ -72,11 +79,13 @@ class IMenu {
       }
 
       // open library
-      final dylib = ffi.DynamicLibrary.open(libraryPath);
+      _dylib = ffi.DynamicLibrary.open(libraryPath);
       print('Successfully loaded library');
       
-      final winsizeFunc = dylib.lookupFunction<winsize_c, winsize_d>('winsize');
-      final freeFunc = dylib.lookupFunction<free_c, free_d>('free');
+      final winsizeFunc = _dylib.lookupFunction<winsize_c, winsize_d>('winsize');
+      final freeFunc = _dylib.lookupFunction<free_c, free_d>('free_memory');
+      _setConsoleMode = _dylib.lookupFunction<set_console_mode_c, set_console_mode_d>('set_console_mode');
+      _getConsoleMode = _dylib.lookupFunction<get_console_mode_c, get_console_mode_d>('get_console_mode');
 
       // call winsize function
       final resultPointer = winsizeFunc();
@@ -84,7 +93,7 @@ class IMenu {
       if (resultPointer != ffi.nullptr) {
         rows = resultPointer[0];
         cols = resultPointer[1];
-        print('Terminal size: $rows rows x $cols columns');
+        // print('Terminal size: $rows rows x $cols columns');
         // clean up
         freeFunc(resultPointer);
       } else {
@@ -112,6 +121,16 @@ class IMenu {
 
   // function to read ansi input
   String readAnsi() {
+    if (Platform.isWindows) {
+      // windows termnal echo off
+      _setConsoleMode(0);  // Disable echo and line input
+      int char = stdin.readByteSync();
+      _setConsoleMode(1);  // Re-enable echo and line input
+      if (char == 13) return '\n';  // Convert CR to LF
+      return String.fromCharCode(char);
+    }
+
+    // unix termnal echo off
     stdin.echoMode = false;
     stdin.lineMode = false;
 
@@ -167,7 +186,11 @@ class IMenu {
   }
 
   void displayMenu(bool ok) {
-    stdout.write(ok ? '\x1b[32m◇\x1b[0m  Select target:\n' : dim('$diamond Select target:'));
+    if (Platform.isWindows) {
+      stdout.write(ok ? '\x1b[32m◇\x1b[0m  Select target: (w/s to navigate)\n' : dim('$diamond Select target: (w/s to navigate)'));
+    } else {
+      stdout.write(ok ? '\x1b[32m◇\x1b[0m  Select target: (j/k to navigate)\n' : dim('$diamond Select target: (j/k to navigate)'));
+    }
 
     for (final entry in options.asMap().entries) {
       int idx = entry.key;
@@ -219,6 +242,9 @@ class IMenu {
     'j': 'down',
     '\r': 'enter',
     '\n': 'enter',
+    'w': 'up',      
+    's': 'down',    
+    'q': 'q',
   };
 }
 
