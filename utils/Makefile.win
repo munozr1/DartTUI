@@ -1,0 +1,16 @@
+# Windows-specific Makefile for MSVC
+TARGET = lib\winsize.dll
+
+all: $(TARGET)
+
+$(TARGET):
+	if not exist lib mkdir lib
+	cl /LD /Fe:$(TARGET) winsize.c
+
+clean:
+	if exist lib\winsize.dll del lib\winsize.dll
+	if exist winsize.obj del winsize.obj
+	if exist lib\winsize.lib del lib\winsize.lib
+	if exist lib\winsize.exp del lib\winsize.exp
+
+.PHONY: all clean 

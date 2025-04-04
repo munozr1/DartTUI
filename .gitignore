@@ -3,6 +3,9 @@ utils/lib/
 utils/lib/*.so
 utils/lib/*.dylib
 utils/lib/*.dll
+utils/lib/*.o
+utils/lib/*.obj
+utils/*.o
 
 # Dart related
 .dart_tool/
