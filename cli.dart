@@ -8,6 +8,13 @@ typedef winsize_d = ffi.Pointer<ffi.Uint16> Function();
 typedef free_c = ffi.Void Function(ffi.Pointer);
 typedef free_d = void Function(ffi.Pointer);
 
+
+String diamond = "◇";
+String pipe         = "│";
+String hook         = "└";
+String circle       = "○";
+String dot          = "●";
+
 class IMenu {
   // list of menu options
   List<String> options = ["Windows", "MacOS", "Linux", "iOS", "Android"];
@@ -25,9 +32,12 @@ class IMenu {
 
   // private function to initialize terminal size using dynamic library
   void _initTerminalSize() {
+    // Get the absolute path to the current directory
+    final currentDir = Directory.current.absolute.path;
+    
     // determine library path based on platform
     var libraryPath = path.join(
-      Directory.current.path,
+      currentDir,
       'utils',
       'lib',
       'libwinsize.so',
@@ -35,7 +45,7 @@ class IMenu {
 
     if (Platform.isMacOS) {
       libraryPath = path.join(
-        Directory.current.path,
+        currentDir,
         'utils',
         'lib',
         'libwinsize.dylib',
@@ -44,18 +54,27 @@ class IMenu {
 
     if (Platform.isWindows) {
       libraryPath = path.join(
-        Directory.current.path,
-        'hello_library',
+        currentDir,
         'utils',
         'lib',
         'winsize.dll',
       );
     }
 
+    // debug
+    print('Attempting to load library from: $libraryPath');
+    print('Current working directory: $currentDir');
+
     try {
-      // open dynamic library
+      // check if library exists
+      if (!File(libraryPath).existsSync()) {
+        throw Exception('Library file not found at: $libraryPath');
+      }
+
+      // open library
       final dylib = ffi.DynamicLibrary.open(libraryPath);
-      // lookup winsize and free functions
+      print('Successfully loaded library');
+      
       final winsizeFunc = dylib.lookupFunction<winsize_c, winsize_d>('winsize');
       final freeFunc = dylib.lookupFunction<free_c, free_d>('free');
 
@@ -63,18 +82,21 @@ class IMenu {
       final resultPointer = winsizeFunc();
 
       if (resultPointer != ffi.nullptr) {
-        // store terminal rows and columns
         rows = resultPointer[0];
         cols = resultPointer[1];
-        // free allocated memory
+        print('Terminal size: $rows rows x $cols columns');
+        // clean up
         freeFunc(resultPointer);
       } else {
-        // print error if winsize returns null
-        print("winsize() returned NULL. Library error.");
+        throw Exception("winsize() returned NULL. Library error.");
       }
-    } catch (e) {
-      // print error if loading library or calling function fails
+    } catch (e, stackTrace) {
       print('Error loading library or calling function: $e');
+      print('Stack trace: $stackTrace');
+      // fallback values
+      rows = 30;
+      cols = 80;
+      print('Using default terminal size: $rows rows x $cols columns');
     }
   }
 
@@ -138,14 +160,14 @@ class IMenu {
   }
 
   String select(String text) {
-    return '│  ● $text';
+    return '$pipe  $dot $text';
   }
   String unselect(String text) {
-    return '│  ○ $text';
+    return '$pipe  $circle $text';
   }
 
   void displayMenu(bool ok) {
-    stdout.write(ok ? '\x1b[32m◇\x1b[0m  Select target:\n' : dim('◇  Select target:'));
+    stdout.write(ok ? '\x1b[32m◇\x1b[0m  Select target:\n' : dim('$diamond Select target:'));
 
     for (final entry in options.asMap().entries) {
       int idx = entry.key;
@@ -208,3 +230,9 @@ void main() {
   // print the selected option
   print('Selected option: $selectedOption');
 }
+
+
+
+
+
+
