@@ -6,6 +6,9 @@ utils/lib/*.dll
 utils/lib/*.o
 utils/lib/*.obj
 utils/*.o
+utils/*.obj
+utils/*.lib
+utils/*.exp
 
 # Dart related
 .dart_tool/
