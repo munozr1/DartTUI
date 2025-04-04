@@ -1,0 +1,20 @@
+# Ignore compiled libraries
+utils/lib/
+utils/lib/*.so
+utils/lib/*.dylib
+utils/lib/*.dll
+
+# Dart related
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# IDE related
+.idea/
+.vscode/
+*.iml
+
+# OS related
+.DS_Store
+Thumbs.db 
